@@ -1,0 +1,11 @@
+# Вариант 1: Стандартный app.py
+web: python app.py
+
+# Вариант 2: С явным указанием Python 3
+# web: python3 app.py
+
+# Вариант 3: С полным путем
+# web: /usr/bin/python3 app.py
+
+# Вариант 4: С отладкой
+# web: python -u app.py 
