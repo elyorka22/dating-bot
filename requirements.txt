@@ -1,1 +1,1 @@
-flask 
+# No dependencies needed - using standard library only 
