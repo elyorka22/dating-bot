@@ -1,0 +1,12 @@
+# Токен бота Telegram
+BOT_TOKEN=8256818214:AAFwnmIc-pKeN8IgpkrW15B6TpUDVdS4ZKI
+
+# Supabase настройки
+SUPABASE_URL=https://jcouuxyzslspubviwfnz.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impjb3V1eHl6c2xzcHVidml3Zm56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyOTMwNTYsImV4cCI6MjA3MDg2OTA1Nn0.mPtyUI9wzj8fDYdtYceDn7zQJmH_zsMHbpAQxXXiJuU
+
+# База данных (пока используем SQLite для разработки)
+DATABASE_URL=sqlite:///dating_bot.db
+
+# Для переключения на Supabase PostgreSQL раскомментируйте строку ниже:
+# DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.jcouuxyzslspubviwfnz.supabase.co:5432/postgres 

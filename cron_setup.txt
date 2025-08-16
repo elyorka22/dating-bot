@@ -1,0 +1,10 @@
+# Cron задача для запуска бота на Beget
+# Добавьте эту строку в cron через панель управления Beget:
+
+# Запуск бота каждые 5 минут (проверка и перезапуск)
+*/5 * * * * cd /home/username/public_html && python3 start_bot.py
+
+# Или запуск при загрузке системы
+@reboot cd /home/username/public_html && python3 start_bot.py
+
+# Замените username на ваше имя пользователя

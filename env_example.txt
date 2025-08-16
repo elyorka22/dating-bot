@@ -1,0 +1,37 @@
+# Railway Environment Variables
+# Скопируйте этот файл в .env и заполните значения
+
+# Токен бота Telegram
+BOT_TOKEN=8256818214:AAFwnmIc-pKeN8IgpkrW15B6TpUDVdS4ZKI
+
+# База данных (Railway автоматически предоставляет DATABASE_URL)
+# DATABASE_URL будет автоматически установлен Railway
+
+# Supabase настройки (опционально)
+SUPABASE_URL=https://jcouuxyzslspubviwfnz.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impjb3V1eHl6c2xzcHVidml3Zm56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyOTMwNTYsImV4cCI6MjA3MDg2OTA1Nn0.mPtyUI9wzj8fDYdtYceDn7zQJmH_zsMHbpAQxXXiJuU
+
+# Настройки бота
+MAX_REQUESTS_PER_DAY=20
+MIN_AGE=18
+MAX_AGE=100
+MIN_HEIGHT=140
+MAX_HEIGHT=220
+MIN_WEIGHT=40
+MAX_WEIGHT=200
+
+# Настройки производительности
+BOT_POLLING_TIMEOUT=30
+BOT_POLLING_LIMIT=100
+SKIP_UPDATES=true
+
+# Настройки логирования
+LOG_LEVEL=INFO
+LOG_FILE=logs/dating_bot.log
+
+# Настройки безопасности
+RATE_LIMIT_ENABLED=true
+SPAM_PROTECTION_ENABLED=true
+
+# Railway настройки
+ENVIRONMENT=production 

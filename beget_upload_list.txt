@@ -1,0 +1,36 @@
+# Файлы для загрузки на Beget
+# Загрузите эти файлы в папку public_html на Beget
+
+## Основные файлы
+main_beget.py          # Главный файл бота для Beget
+config_beget.py        # Конфигурация для Beget
+requirements.txt       # Зависимости Python
+start_bot.py          # Скрипт запуска
+.env                  # Переменные окружения (создайте на основе env_example.txt)
+
+## Папки (загрузите полностью)
+database/             # Модели и настройки базы данных
+handlers/             # Обработчики команд
+keyboards/            # Клавиатуры
+locales/              # Переводы
+services/             # Сервисы
+utils/                # Утилиты
+scripts/              # Скрипты
+
+## Конфигурационные файлы
+.htaccess             # Настройки Apache для Python
+cron_setup.txt        # Настройки cron
+BEGET_DEPLOYMENT_GUIDE.md  # Руководство по деплою
+
+## Документация (опционально)
+README.md             # Документация проекта
+DEPLOYMENT.md         # Общее руководство по деплою
+PRODUCTION_READINESS.md  # Готовность к продакшену
+
+## НЕ загружайте
+venv/                 # Виртуальное окружение (создастся на сервере)
+__pycache__/          # Кэш Python
+*.pyc                 # Скомпилированные файлы Python
+.git/                 # Git репозиторий
+logs/                 # Логи (создастся автоматически)
+dating_bot.db         # База данных (создастся автоматически) 
