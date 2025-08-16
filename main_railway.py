@@ -4,6 +4,8 @@ import logging
 import os
 import sys
 from pathlib import Path
+from aiohttp import web
+import threading
 
 # Добавляем путь к проекту
 project_path = Path(__file__).parent
@@ -28,9 +30,30 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Веб-сервер для healthcheck
+async def healthcheck_handler(request):
+    return web.Response(text="Bot is running!", status=200)
+
+async def start_web_server():
+    """Запуск веб-сервера для healthcheck"""
+    app = web.Application()
+    app.router.add_get('/', healthcheck_handler)
+    app.router.add_get('/health', healthcheck_handler)
+    
+    port = int(os.environ.get("PORT", 8000))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logger.info(f"🌐 Веб-сервер запущен на порту {port}")
+    return runner
+
 # Оптимизированные настройки бота для Railway
 async def main():
     log_bot_event(logger, "Bot startup", "Starting Railway dating bot...")
+    
+    # Запускаем веб-сервер для healthcheck
+    web_runner = await start_web_server()
     
     # Проверка подключения к БД
     if not check_database_connection():
@@ -72,6 +95,7 @@ async def main():
         logger.error(f"Ошибка при запуске бота: {e}")
     finally:
         await bot.session.close()
+        await web_runner.cleanup()
 
 if __name__ == "__main__":
     try:
