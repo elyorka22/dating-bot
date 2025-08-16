@@ -1,1 +1,1 @@
-web: python -u test_simple.py 
+web: python app_flask.py 
