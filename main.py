@@ -14,7 +14,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from sqlalchemy.orm import Session
 
 # Импорты из нашего проекта
-from config import BOT_TOKEN, DATABASE_URL
+from config import BOT_TOKEN, DATABASE_URL, GENDERS, MARITAL_STATUSES, MIN_AGE, MAX_AGE, MIN_HEIGHT, MAX_HEIGHT, MIN_WEIGHT, MAX_WEIGHT
 from database.database import get_db, create_tables, check_database_connection
 from database.models import User, Request
 from handlers.user import get_user_by_telegram_id, create_user, update_user_profile, search_users, is_profile_complete, get_user_profile_text
@@ -34,7 +34,6 @@ class RegistrationStates(StatesGroup):
     waiting_for_height = State()
     waiting_for_weight = State()
     waiting_for_marital_status = State()
-    waiting_for_interests = State()
     waiting_for_bio = State()
 
 class SearchStates(StatesGroup):
@@ -87,6 +86,118 @@ async def process_language_selection(callback: CallbackQuery):
         )
     else:
         await callback.message.edit_text(get_text('error', lang))
+
+# Обработчик создания профиля
+@router.callback_query(lambda c: c.data == 'create_profile')
+async def start_profile_creation(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(RegistrationStates.waiting_for_gender)
+    await callback.message.edit_text(
+        get_text('enter_gender', 'ru'),
+        reply_markup=get_gender_keyboard('ru')
+    )
+
+# Обработчик выбора пола
+@router.callback_query(lambda c: c.data.startswith('gender_'))
+async def process_gender_selection(callback: CallbackQuery, state: FSMContext):
+    gender = callback.data.split('_')[1]
+    await state.update_data(gender=gender)
+    await state.set_state(RegistrationStates.waiting_for_age)
+    
+    await callback.message.edit_text(
+        f"Вы выбрали: {gender}\n\n{get_text('enter_age', 'ru')} ({MIN_AGE}-{MAX_AGE}):"
+    )
+
+# Обработчик ввода возраста
+@router.message(RegistrationStates.waiting_for_age)
+async def process_age_input(message: Message, state: FSMContext):
+    try:
+        age = int(message.text)
+        if MIN_AGE <= age <= MAX_AGE:
+            await state.update_data(age=age)
+            await state.set_state(RegistrationStates.waiting_for_height)
+            await message.answer(
+                f"Возраст: {age}\n\n{get_text('enter_height', 'ru')} ({MIN_HEIGHT}-{MAX_HEIGHT} см):"
+            )
+        else:
+            await message.answer(f"Возраст должен быть от {MIN_AGE} до {MAX_AGE} лет. Попробуйте еще раз:")
+    except ValueError:
+        await message.answer("Пожалуйста, введите число. Попробуйте еще раз:")
+
+# Обработчик ввода роста
+@router.message(RegistrationStates.waiting_for_height)
+async def process_height_input(message: Message, state: FSMContext):
+    try:
+        height = int(message.text)
+        if MIN_HEIGHT <= height <= MAX_HEIGHT:
+            await state.update_data(height=height)
+            await state.set_state(RegistrationStates.waiting_for_weight)
+            await message.answer(
+                f"Рост: {height} см\n\n{get_text('enter_weight', 'ru')} ({MIN_WEIGHT}-{MAX_WEIGHT} кг):"
+            )
+        else:
+            await message.answer(f"Рост должен быть от {MIN_HEIGHT} до {MAX_HEIGHT} см. Попробуйте еще раз:")
+    except ValueError:
+        await message.answer("Пожалуйста, введите число. Попробуйте еще раз:")
+
+# Обработчик ввода веса
+@router.message(RegistrationStates.waiting_for_weight)
+async def process_weight_input(message: Message, state: FSMContext):
+    try:
+        weight = int(message.text)
+        if MIN_WEIGHT <= weight <= MAX_WEIGHT:
+            await state.update_data(weight=weight)
+            await state.set_state(RegistrationStates.waiting_for_marital_status)
+            await message.answer(
+                f"Вес: {weight} кг\n\n{get_text('enter_marital_status', 'ru')}",
+                reply_markup=get_marital_status_keyboard('ru')
+            )
+        else:
+            await message.answer(f"Вес должен быть от {MIN_WEIGHT} до {MAX_WEIGHT} кг. Попробуйте еще раз:")
+    except ValueError:
+        await message.answer("Пожалуйста, введите число. Попробуйте еще раз:")
+
+# Обработчик выбора семейного положения
+@router.callback_query(lambda c: c.data.startswith('marital_'))
+async def process_marital_status_selection(callback: CallbackQuery, state: FSMContext):
+    marital_status = callback.data.split('_')[1]
+    await state.update_data(marital_status=marital_status)
+    await state.set_state(RegistrationStates.waiting_for_bio)
+    
+    await callback.message.edit_text(
+        f"Семейное положение: {marital_status}\n\n{get_text('enter_bio', 'ru')} (или отправьте '-' чтобы пропустить):"
+    )
+
+# Обработчик ввода описания
+@router.message(RegistrationStates.waiting_for_bio)
+async def process_bio_input(message: Message, state: FSMContext):
+    bio = message.text if message.text != '-' else None
+    await state.update_data(bio=bio)
+    
+    # Получаем все данные
+    data = await state.get_data()
+    
+    # Сохраняем профиль в базу данных
+    db = next(get_db())
+    user = get_user_by_telegram_id(message.from_user.id, db)
+    
+    if user:
+        update_user_profile(
+            user.id,
+            gender=data['gender'],
+            age=data['age'],
+            height=data['height'],
+            weight=data['weight'],
+            marital_status=data['marital_status'],
+            bio=data['bio']
+        )
+        
+        await state.clear()
+        await message.answer(
+            get_text('profile_created', 'ru'),
+            reply_markup=get_main_menu_keyboard('ru')
+        )
+    else:
+        await message.answer("Ошибка: пользователь не найден")
 
 # Обработчик главного меню
 @router.callback_query(lambda c: c.data == 'back_to_main')

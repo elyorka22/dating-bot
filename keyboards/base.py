@@ -68,6 +68,7 @@ def get_interests_keyboard(lang: str = 'ru') -> InlineKeyboardMarkup:
 def get_main_menu_keyboard(lang: str = 'ru') -> InlineKeyboardMarkup:
     """Главное меню"""
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📝 Создать профиль", callback_data="create_profile")],
         [InlineKeyboardButton(text=get_text('search', lang), callback_data="menu_search")],
         [InlineKeyboardButton(text=get_text('profile', lang), callback_data="menu_profile")],
         [InlineKeyboardButton(text=get_text('requests', lang), callback_data="menu_requests")],
