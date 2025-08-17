@@ -4,6 +4,7 @@ import sys
 import asyncio
 import threading
 import time
+import logging
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.filters import Command
@@ -22,10 +23,18 @@ from handlers.requests import create_request, get_user_requests, update_request_
 from keyboards.base import *
 from locales.translations import get_text
 
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 print("=== ЗАПУСК TELEGRAM БОТА ЗНАКОМСТВ ===")
 print(f"Python версия: {sys.version}")
 print(f"Текущая директория: {os.getcwd()}")
 print(f"PORT: {os.environ.get('PORT', 'НЕ УСТАНОВЛЕН')}")
+print(f"🔗 DATABASE_URL: {DATABASE_URL}")
 
 # Состояния FSM
 class RegistrationStates(StatesGroup):
@@ -216,13 +225,16 @@ async def process_bio_input(message: Message, state: FSMContext):
     
     # Получаем все данные
     data = await state.get_data()
+    logger.info(f"📝 Данные профиля для сохранения: {data}")
     
     # Сохраняем профиль в базу данных
     db = next(get_db())
     user = get_user_by_telegram_id(message.from_user.id, db)
     
     if user:
-        update_user_profile(
+        logger.info(f"🔄 Сохранение профиля для пользователя {user.id}")
+        
+        success = update_user_profile(
             user.id,
             gender=data['gender'],
             age=data['age'],
@@ -232,13 +244,19 @@ async def process_bio_input(message: Message, state: FSMContext):
             bio=data['bio']
         )
         
-        await state.clear()
-        await message.answer(
-            get_text('profile_created', user.language),
-            reply_markup=get_main_menu_keyboard(user.language)
-        )
+        if success:
+            await state.clear()
+            await message.answer(
+                get_text('profile_created', user.language),
+                reply_markup=get_main_menu_keyboard(user.language)
+            )
+            logger.info(f"✅ Профиль пользователя {user.id} сохранен успешно")
+        else:
+            await message.answer("❌ Ошибка при сохранении профиля")
+            logger.error(f"❌ Не удалось сохранить профиль пользователя {user.id}")
     else:
         await message.answer(get_text('user_not_found', 'ru'))
+        logger.error(f"❌ Пользователь не найден для сохранения профиля: {message.from_user.id}")
 
 # Обработчик редактирования профиля
 @router.callback_query(lambda c: c.data == 'profile_edit')
