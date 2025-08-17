@@ -1,66 +1,60 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Table
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
 Base = declarative_base()
 
+# Таблица связи пользователей и интересов
+user_interests = Table(
+    'user_interests',
+    Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id')),
+    Column('interest', String(50))
+)
+
 class User(Base):
     __tablename__ = "users"
     
-    id = Column(Integer, primary_key=True)
-    telegram_id = Column(Integer, unique=True, nullable=False)
+    id = Column(Integer, primary_key=True, index=True)
+    telegram_id = Column(Integer, unique=True, index=True)
     username = Column(String(100), nullable=True)
-    gender = Column(String(20), nullable=False)
-    age = Column(Integer, nullable=False)
-    height = Column(Integer, nullable=False)
-    weight = Column(Integer, nullable=False)
-    marital_status = Column(String(50), nullable=False)
-    interests = Column(Text, nullable=True)  # JSON строка с интересами
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
+    
+    # Профиль
+    gender = Column(String(20), nullable=True)
+    age = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+    weight = Column(Integer, nullable=True)
+    marital_status = Column(String(50), nullable=True)
     bio = Column(Text, nullable=True)
-    language = Column(String(10), default='ru')  # Язык пользователя ('ru' или 'uz')
+    language = Column(String(10), default='ru')
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Отношения
-    search_settings = relationship("SearchSettings", back_populates="user", uselist=False)
-    sent_requests = relationship("AccessRequest", foreign_keys="AccessRequest.from_user_id", back_populates="from_user")
-    received_requests = relationship("AccessRequest", foreign_keys="AccessRequest.to_user_id", back_populates="to_user")
+    # Поисковые предпочтения
+    search_gender = Column(String(20), nullable=True)
+    min_age = Column(Integer, nullable=True)
+    max_age = Column(Integer, nullable=True)
+    min_height = Column(Integer, nullable=True)
+    max_height = Column(Integer, nullable=True)
+    min_weight = Column(Integer, nullable=True)
+    max_weight = Column(Integer, nullable=True)
+    
+    # Связи
+    sent_requests = relationship("Request", foreign_keys="Request.from_user_id", back_populates="from_user")
+    received_requests = relationship("Request", foreign_keys="Request.to_user_id", back_populates="to_user")
 
-class SearchSettings(Base):
-    __tablename__ = "search_settings"
+class Request(Base):
+    __tablename__ = "requests"
     
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    gender_preference = Column(String(20), nullable=False)  # "Мужчины", "Женщины", "Все"
-    min_age = Column(Integer, nullable=False)
-    max_age = Column(Integer, nullable=False)
-    min_height = Column(Integer, nullable=False)
-    max_height = Column(Integer, nullable=False)
-    min_weight = Column(Integer, nullable=False)
-    max_weight = Column(Integer, nullable=False)
-    marital_status_preference = Column(Text, nullable=True)  # JSON строка с предпочтениями
-    
-    # Отношения
-    user = relationship("User", back_populates="search_settings")
-
-class AccessRequest(Base):
-    __tablename__ = "access_requests"
-    
-    id = Column(Integer, primary_key=True)
-    from_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    to_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    status = Column(String(20), default="pending")  # "pending", "accepted", "rejected"
+    id = Column(Integer, primary_key=True, index=True)
+    from_user_id = Column(Integer, ForeignKey("users.id"))
+    to_user_id = Column(Integer, ForeignKey("users.id"))
+    status = Column(String(20), default="pending")  # pending, accepted, declined
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Отношения
+    # Связи
     from_user = relationship("User", foreign_keys=[from_user_id], back_populates="sent_requests")
-    to_user = relationship("User", foreign_keys=[to_user_id], back_populates="received_requests")
-
-class AllowedContact(Base):
-    __tablename__ = "allowed_contacts"
-    
-    id = Column(Integer, primary_key=True)
-    user1_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    user2_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow) 
+    to_user = relationship("User", foreign_keys=[to_user_id], back_populates="received_requests") 
