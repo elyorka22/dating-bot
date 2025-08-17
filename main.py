@@ -70,7 +70,7 @@ async def cmd_start(message: Message):
         await message.answer(get_text('welcome', 'ru'), reply_markup=get_language_keyboard())
     else:
         # Показываем главное меню
-        await show_main_menu(message, user.language)
+        await message.answer(get_text('main_menu', user.language), reply_markup=get_main_menu_keyboard(user.language))
 
 # Обработчик выбора языка
 @router.callback_query(lambda c: c.data.startswith('lang_'))
@@ -93,7 +93,10 @@ async def process_language_selection(callback: CallbackQuery):
 async def back_to_main_menu(callback: CallbackQuery):
     db = next(get_db())
     user = get_user_by_telegram_id(callback.from_user.id, db)
-    await show_main_menu(callback.message, user.language if user else 'ru')
+    await callback.message.edit_text(
+        get_text('main_menu', user.language if user else 'ru'),
+        reply_markup=get_main_menu_keyboard(user.language if user else 'ru')
+    )
 
 # Обработчик поиска
 @router.callback_query(lambda c: c.data == 'menu_search')
@@ -309,13 +312,6 @@ async def next_user_handler(callback: CallbackQuery):
         )
 
 # Вспомогательные функции
-async def show_main_menu(message: Message, lang: str = 'ru'):
-    """Показать главное меню"""
-    await message.edit_text(
-        get_text('main_menu', lang),
-        reply_markup=get_main_menu_keyboard(lang)
-    )
-
 async def show_user_profile(message: Message, user: User, index: int, lang: str = 'ru'):
     """Показать профиль пользователя"""
     profile_text = get_user_profile_text(user, lang)
