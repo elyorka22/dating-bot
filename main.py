@@ -103,8 +103,17 @@ async def process_gender_selection(callback: CallbackQuery, state: FSMContext):
     await state.update_data(gender=gender)
     await state.set_state(RegistrationStates.waiting_for_age)
     
+    # Получаем язык пользователя
+    db = next(get_db())
+    user = get_user_by_telegram_id(callback.from_user.id, db)
+    lang = user.language if user else 'ru'
+    
+    gender_text = "Мужчина" if gender == "male" else "Женщина"
+    if lang == 'uz':
+        gender_text = "Erkak" if gender == "male" else "Ayol"
+    
     await callback.message.edit_text(
-        f"Вы выбрали: {gender}\n\n{get_text('enter_age', 'ru')} ({MIN_AGE}-{MAX_AGE}):"
+        f"{get_text('you_selected', lang, value=gender_text)}\n\n{get_text('enter_age', lang)} ({MIN_AGE}-{MAX_AGE}):"
     )
 
 # Обработчик ввода возраста
@@ -115,13 +124,20 @@ async def process_age_input(message: Message, state: FSMContext):
         if MIN_AGE <= age <= MAX_AGE:
             await state.update_data(age=age)
             await state.set_state(RegistrationStates.waiting_for_height)
+            
+            # Получаем язык пользователя
+            db = next(get_db())
+            user = get_user_by_telegram_id(message.from_user.id, db)
+            lang = user.language if user else 'ru'
+            
             await message.answer(
-                f"Возраст: {age}\n\n{get_text('enter_height', 'ru')} ({MIN_HEIGHT}-{MAX_HEIGHT} см):"
+                f"{get_text('age_value', lang, age=age)}\n\n{get_text('enter_height', lang)} ({MIN_HEIGHT}-{MAX_HEIGHT} см):",
+                reply_markup=get_cancel_keyboard(lang)
             )
         else:
-            await message.answer(f"Возраст должен быть от {MIN_AGE} до {MAX_AGE} лет. Попробуйте еще раз:")
+            await message.answer(get_text('age_range_error', 'ru', min=MIN_AGE, max=MAX_AGE))
     except ValueError:
-        await message.answer("Пожалуйста, введите число. Попробуйте еще раз:")
+        await message.answer(get_text('please_enter_number', 'ru'))
 
 # Обработчик ввода роста
 @router.message(RegistrationStates.waiting_for_height)
@@ -131,13 +147,20 @@ async def process_height_input(message: Message, state: FSMContext):
         if MIN_HEIGHT <= height <= MAX_HEIGHT:
             await state.update_data(height=height)
             await state.set_state(RegistrationStates.waiting_for_weight)
+            
+            # Получаем язык пользователя
+            db = next(get_db())
+            user = get_user_by_telegram_id(message.from_user.id, db)
+            lang = user.language if user else 'ru'
+            
             await message.answer(
-                f"Рост: {height} см\n\n{get_text('enter_weight', 'ru')} ({MIN_WEIGHT}-{MAX_WEIGHT} кг):"
+                f"{get_text('height_value', lang, height=height)}\n\n{get_text('enter_weight', lang)} ({MIN_WEIGHT}-{MAX_WEIGHT} кг):",
+                reply_markup=get_cancel_keyboard(lang)
             )
         else:
-            await message.answer(f"Рост должен быть от {MIN_HEIGHT} до {MAX_HEIGHT} см. Попробуйте еще раз:")
+            await message.answer(get_text('height_range_error', 'ru', min=MIN_HEIGHT, max=MAX_HEIGHT))
     except ValueError:
-        await message.answer("Пожалуйста, введите число. Попробуйте еще раз:")
+        await message.answer(get_text('please_enter_number', 'ru'))
 
 # Обработчик ввода веса
 @router.message(RegistrationStates.waiting_for_weight)
@@ -147,14 +170,20 @@ async def process_weight_input(message: Message, state: FSMContext):
         if MIN_WEIGHT <= weight <= MAX_WEIGHT:
             await state.update_data(weight=weight)
             await state.set_state(RegistrationStates.waiting_for_marital_status)
+            
+            # Получаем язык пользователя
+            db = next(get_db())
+            user = get_user_by_telegram_id(message.from_user.id, db)
+            lang = user.language if user else 'ru'
+            
             await message.answer(
-                f"Вес: {weight} кг\n\n{get_text('enter_marital_status', 'ru')}",
-                reply_markup=get_marital_status_keyboard('ru')
+                f"{get_text('weight_value', lang, weight=weight)}\n\n{get_text('enter_marital_status', lang)}",
+                reply_markup=get_marital_status_keyboard(lang)
             )
         else:
-            await message.answer(f"Вес должен быть от {MIN_WEIGHT} до {MAX_WEIGHT} кг. Попробуйте еще раз:")
+            await message.answer(get_text('weight_range_error', 'ru', min=MIN_WEIGHT, max=MAX_WEIGHT))
     except ValueError:
-        await message.answer("Пожалуйста, введите число. Попробуйте еще раз:")
+        await message.answer(get_text('please_enter_number', 'ru'))
 
 # Обработчик выбора семейного положения
 @router.callback_query(lambda c: c.data.startswith('marital_'))
@@ -163,8 +192,20 @@ async def process_marital_status_selection(callback: CallbackQuery, state: FSMCo
     await state.update_data(marital_status=marital_status)
     await state.set_state(RegistrationStates.waiting_for_bio)
     
+    # Получаем язык пользователя
+    db = next(get_db())
+    user = get_user_by_telegram_id(callback.from_user.id, db)
+    lang = user.language if user else 'ru'
+    
+    status_text = {
+        'single': 'Холост/Не замужем' if lang == 'ru' else 'Bekor/Erkak emas',
+        'married': 'Женат/Замужем' if lang == 'ru' else 'Uylangan/Turmush qurgan',
+        'divorced': 'Разведен/Разведена' if lang == 'ru' else 'Ajrashgan/Ajrashgan'
+    }.get(marital_status, marital_status)
+    
     await callback.message.edit_text(
-        f"Семейное положение: {marital_status}\n\n{get_text('enter_bio', 'ru')} (или отправьте '-' чтобы пропустить):"
+        f"{get_text('marital_status_value', lang, status=status_text)}\n\n{get_text('enter_bio', lang)} (или отправьте '-' чтобы пропустить):",
+        reply_markup=get_cancel_keyboard(lang)
     )
 
 # Обработчик ввода описания
@@ -193,11 +234,37 @@ async def process_bio_input(message: Message, state: FSMContext):
         
         await state.clear()
         await message.answer(
-            get_text('profile_created', 'ru'),
-            reply_markup=get_main_menu_keyboard('ru')
+            get_text('profile_created', user.language),
+            reply_markup=get_main_menu_keyboard(user.language)
         )
     else:
-        await message.answer("Ошибка: пользователь не найден")
+        await message.answer(get_text('user_not_found', 'ru'))
+
+# Обработчик редактирования профиля
+@router.callback_query(lambda c: c.data == 'profile_edit')
+async def start_profile_edit(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(RegistrationStates.waiting_for_gender)
+    
+    # Получаем язык пользователя
+    db = next(get_db())
+    user = get_user_by_telegram_id(callback.from_user.id, db)
+    lang = user.language if user else 'ru'
+    
+    await callback.message.edit_text(
+        f"{get_text('edit_profile_title', lang)}\n\n{get_text('enter_gender', lang)}:",
+        reply_markup=get_gender_keyboard(lang)
+    )
+
+# Обработчик отмены
+@router.callback_query(lambda c: c.data == 'cancel')
+async def cancel_action(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    db = next(get_db())
+    user = get_user_by_telegram_id(callback.from_user.id, db)
+    await callback.message.edit_text(
+        get_text('main_menu', user.language if user else 'ru'),
+        reply_markup=get_main_menu_keyboard(user.language if user else 'ru')
+    )
 
 # Обработчик главного меню
 @router.callback_query(lambda c: c.data == 'back_to_main')
@@ -273,7 +340,7 @@ async def menu_requests(callback: CallbackQuery):
     
     if not requests:
         await callback.message.edit_text(
-            "📨 У вас пока нет новых запросов",
+            get_text('no_new_requests', user.language),
             reply_markup=get_main_menu_keyboard(user.language)
         )
         return
@@ -295,7 +362,7 @@ async def menu_settings(callback: CallbackQuery):
         return
     
     await callback.message.edit_text(
-        "⚙️ Настройки",
+        get_text('settings_title', user.language),
         reply_markup=get_settings_keyboard(user.language)
     )
 
@@ -311,7 +378,7 @@ async def send_request_handler(callback: CallbackQuery):
     
     # Получаем текущего пользователя из поиска
     if callback.from_user.id not in user_search_results:
-        await callback.answer("Ошибка: пользователь не найден")
+        await callback.answer(get_text('search_results_not_found', 'ru'))
         return
     
     current_users = user_search_results[callback.from_user.id]
@@ -336,7 +403,7 @@ async def send_request_handler(callback: CallbackQuery):
     
     # Проверяем лимит запросов
     if not can_send_request(user.id, db):
-        await callback.answer("Достигнут дневной лимит запросов")
+        await callback.answer(get_text('daily_limit_reached', user.language))
         return
     
     # Создаем запрос
@@ -354,7 +421,7 @@ async def send_request_handler(callback: CallbackQuery):
         except Exception as e:
             print(f"Ошибка отправки уведомления: {e}")
     else:
-        await callback.answer("Запрос уже отправлен")
+        await callback.answer(get_text('request_already_sent', user.language))
 
 # Обработчик принятия/отклонения запроса
 @router.callback_query(lambda c: c.data.startswith(('accept_request_', 'decline_request_')))
@@ -371,7 +438,7 @@ async def handle_request_action(callback: CallbackQuery):
     
     request = get_request_by_id(request_id, db)
     if not request or request.to_user_id != user.id:
-        await callback.answer("Запрос не найден")
+        await callback.answer(get_text('request_not_found', user.language))
         return
     
     if action == 'accept_request':
@@ -399,7 +466,7 @@ async def handle_request_action(callback: CallbackQuery):
 @router.callback_query(lambda c: c.data.startswith('next_user'))
 async def next_user_handler(callback: CallbackQuery):
     if callback.from_user.id not in user_search_results:
-        await callback.answer("Ошибка: результаты поиска не найдены")
+        await callback.answer(get_text('search_results_not_found', 'ru'))
         return
     
     users = user_search_results[callback.from_user.id]
@@ -443,7 +510,7 @@ async def show_request(message: Message, request: Request, lang: str = 'ru'):
     
     request_text = f"📨 {get_text('request_received', lang)}\n\n"
     if from_user:
-        request_text += f"От: {from_user.first_name or 'Пользователь'}"
+        request_text += get_text('from_user', lang, name=from_user.first_name or get_text('user_default', lang))
     
     await message.edit_text(
         request_text,

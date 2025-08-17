@@ -21,7 +21,8 @@ def get_gender_keyboard(lang: str = 'ru') -> InlineKeyboardMarkup:
         ] if lang == 'ru' else [
             InlineKeyboardButton(text="👨 Erkak", callback_data="gender_male"),
             InlineKeyboardButton(text="👩 Ayol", callback_data="gender_female")
-        ]
+        ],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel")]
     ])
     return keyboard
 
@@ -31,13 +32,15 @@ def get_marital_status_keyboard(lang: str = 'ru') -> InlineKeyboardMarkup:
         buttons = [
             [InlineKeyboardButton(text="💚 Холост/Не замужем", callback_data="marital_single")],
             [InlineKeyboardButton(text="💍 Женат/Замужем", callback_data="marital_married")],
-            [InlineKeyboardButton(text="💔 Разведен/Разведена", callback_data="marital_divorced")]
+            [InlineKeyboardButton(text="💔 Разведен/Разведена", callback_data="marital_divorced")],
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel")]
         ]
     else:
         buttons = [
             [InlineKeyboardButton(text="💚 Bekor/Erkak emas", callback_data="marital_single")],
             [InlineKeyboardButton(text="💍 Uylangan/Turmush qurgan", callback_data="marital_married")],
-            [InlineKeyboardButton(text="💔 Ajrashgan/Ajrashgan", callback_data="marital_divorced")]
+            [InlineKeyboardButton(text="💔 Ajrashgan/Ajrashgan", callback_data="marital_divorced")],
+            [InlineKeyboardButton(text="❌ Bekor qilish", callback_data="cancel")]
         ]
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -68,7 +71,7 @@ def get_interests_keyboard(lang: str = 'ru') -> InlineKeyboardMarkup:
 def get_main_menu_keyboard(lang: str = 'ru') -> InlineKeyboardMarkup:
     """Главное меню"""
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📝 Создать профиль", callback_data="create_profile")],
+        [InlineKeyboardButton(text=get_text('create_profile', lang), callback_data="create_profile")],
         [InlineKeyboardButton(text=get_text('search', lang), callback_data="menu_search")],
         [InlineKeyboardButton(text=get_text('profile', lang), callback_data="menu_profile")],
         [InlineKeyboardButton(text=get_text('requests', lang), callback_data="menu_requests")],
