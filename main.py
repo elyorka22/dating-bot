@@ -107,6 +107,96 @@ async def cmd_start(message: Message):
         # Показываем главное меню
         await message.answer(get_text('main_menu', user.language), reply_markup=get_main_menu_keyboard(user.language))
 
+# Обработчик команды /stats (только для администратора)
+@router.message(Command("stats"))
+async def cmd_stats(message: Message):
+    # Проверяем, является ли пользователь администратором
+    admin_ids = [123456789]  # Замените на ваш Telegram ID
+    
+    if message.from_user.id not in admin_ids:
+        await message.answer("❌ У вас нет доступа к этой команде")
+        return
+    
+    db = next(get_db())
+    
+    try:
+        # Получаем статистику
+        total_users = db.query(User).count()
+        active_users = db.query(User).filter(User.is_active == True).count()
+        users_with_profiles = db.query(User).filter(
+            User.gender.isnot(None),
+            User.age.isnot(None),
+            User.height.isnot(None),
+            User.weight.isnot(None)
+        ).count()
+        
+        # Получаем последних 5 пользователей
+        recent_users = db.query(User).order_by(User.created_at.desc()).limit(5).all()
+        
+        stats_text = f"📊 **Статистика бота:**\n\n"
+        stats_text += f"👥 Всего пользователей: {total_users}\n"
+        stats_text += f"✅ Активных пользователей: {active_users}\n"
+        stats_text += f"📝 Пользователей с профилями: {users_with_profiles}\n\n"
+        
+        stats_text += "🆕 **Последние пользователи:**\n"
+        for user in recent_users:
+            stats_text += f"• {user.first_name or 'Без имени'} (@{user.username or 'без username'})\n"
+            stats_text += f"  ID: {user.telegram_id}, Создан: {user.created_at.strftime('%d.%m.%Y %H:%M')}\n"
+        
+        await message.answer(stats_text, parse_mode="Markdown")
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка получения статистики: {e}")
+        await message.answer("❌ Ошибка при получении статистики")
+
+# Обработчик команды /user (только для администратора)
+@router.message(Command("user"))
+async def cmd_user(message: Message):
+    # Проверяем, является ли пользователь администратором
+    admin_ids = [123456789]  # Замените на ваш Telegram ID
+    
+    if message.from_user.id not in admin_ids:
+        await message.answer("❌ У вас нет доступа к этой команде")
+        return
+    
+    # Получаем Telegram ID из команды
+    try:
+        telegram_id = int(message.text.split()[1])
+    except (IndexError, ValueError):
+        await message.answer("❌ Использование: /user <telegram_id>")
+        return
+    
+    db = next(get_db())
+    
+    try:
+        user = db.query(User).filter(User.telegram_id == telegram_id).first()
+        
+        if not user:
+            await message.answer(f"❌ Пользователь с ID {telegram_id} не найден")
+            return
+        
+        user_text = f"👤 **Пользователь:**\n\n"
+        user_text += f"🆔 ID: {user.id}\n"
+        user_text += f"📱 Telegram ID: {user.telegram_id}\n"
+        user_text += f"👤 Имя: {user.first_name or 'Не указано'}\n"
+        user_text += f"👤 Фамилия: {user.last_name or 'Не указано'}\n"
+        user_text += f"🔗 Username: @{user.username or 'Не указано'}\n"
+        user_text += f"🌍 Язык: {user.language or 'Не указан'}\n"
+        user_text += f"👤 Пол: {user.gender or 'Не указан'}\n"
+        user_text += f"🎂 Возраст: {user.age or 'Не указан'}\n"
+        user_text += f"📏 Рост: {user.height or 'Не указан'} см\n"
+        user_text += f"⚖️ Вес: {user.weight or 'Не указан'} кг\n"
+        user_text += f"💍 Семейное положение: {user.marital_status or 'Не указано'}\n"
+        user_text += f"📝 О себе: {user.bio or 'Не указано'}\n"
+        user_text += f"✅ Активен: {'Да' if user.is_active else 'Нет'}\n"
+        user_text += f"📅 Создан: {user.created_at.strftime('%d.%m.%Y %H:%M:%S')}\n"
+        
+        await message.answer(user_text, parse_mode="Markdown")
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка получения пользователя: {e}")
+        await message.answer("❌ Ошибка при получении данных пользователя")
+
 # Обработчик выбора языка
 @router.callback_query(lambda c: c.data.startswith('lang_'))
 async def process_language_selection(callback: CallbackQuery):
