@@ -5,6 +5,7 @@ import asyncio
 import threading
 import time
 import logging
+import signal
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.filters import Command
@@ -35,6 +36,32 @@ print(f"Python версия: {sys.version}")
 print(f"Текущая директория: {os.getcwd()}")
 print(f"PORT: {os.environ.get('PORT', 'НЕ УСТАНОВЛЕН')}")
 print(f"🔗 DATABASE_URL: {DATABASE_URL}")
+
+# Глобальные переменные для управления ботом
+bot = None
+dp = None
+http_server = None
+shutdown_event = threading.Event()
+
+def signal_handler(signum, frame):
+    """Обработчик сигналов для корректного завершения"""
+    logger.info(f"📡 Получен сигнал {signum}, начинаем корректное завершение...")
+    shutdown_event.set()
+    
+    if bot and dp:
+        logger.info("🛑 Остановка Telegram бота...")
+        asyncio.create_task(dp.stop_polling())
+    
+    if http_server:
+        logger.info("🛑 Остановка HTTP сервера...")
+        http_server.shutdown()
+    
+    logger.info("✅ Завершение работы бота")
+    sys.exit(0)
+
+# Регистрируем обработчики сигналов
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
 
 # Состояния FSM
 class RegistrationStates(StatesGroup):
@@ -566,15 +593,24 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
 # Функция запуска HTTP сервера в фоне
 def run_http_server():
     """Запуск HTTP сервера в фоновом потоке"""
+    global http_server
     port = int(os.environ.get("PORT", 8000))
     print(f"🌐 Запуск HTTP сервера на порту {port}")
     
     try:
-        server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+        http_server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
         print(f"✅ HTTP сервер запущен на 0.0.0.0:{port}")
-        server.serve_forever()
+        
+        # Запускаем сервер с проверкой shutdown_event
+        while not shutdown_event.is_set():
+            http_server.handle_request()
+            
     except Exception as e:
         print(f"❌ Ошибка запуска HTTP сервера: {e}")
+    finally:
+        if http_server:
+            http_server.server_close()
+            print("🛑 HTTP сервер остановлен")
 
 # Главная функция
 async def main():
@@ -603,13 +639,48 @@ async def main():
         
         # Запускаем бота в основном потоке
         print("🤖 Запуск Telegram бота...")
-        await dp.start_polling(bot)
+        
+        # Добавляем обработку конфликтов
+        max_retries = 5
+        retry_delay = 10
+        
+        for attempt in range(max_retries):
+            try:
+                # Проверяем shutdown_event перед запуском
+                if shutdown_event.is_set():
+                    logger.info("🛑 Получен сигнал завершения, останавливаем запуск")
+                    return
+                
+                await dp.start_polling(bot, skip_updates=True)
+                break
+            except Exception as e:
+                if "TelegramConflictError" in str(e) or "terminated by other getUpdates request" in str(e):
+                    logger.warning(f"⚠️ Конфликт с другим экземпляром бота (попытка {attempt + 1}/{max_retries})")
+                    if attempt < max_retries - 1:
+                        logger.info(f"⏳ Ожидание {retry_delay} секунд перед повторной попыткой...")
+                        await asyncio.sleep(retry_delay)
+                        retry_delay *= 2  # Увеличиваем задержку
+                    else:
+                        logger.error("❌ Не удалось запустить бота после всех попыток")
+                        return
+                else:
+                    logger.error(f"❌ Неожиданная ошибка запуска бота: {e}")
+                    raise
+        
+        # Ждем завершения
+        while not shutdown_event.is_set():
+            await asyncio.sleep(1)
         
     except Exception as e:
         print(f"❌ Критическая ошибка: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
+    finally:
+        # Корректное завершение
+        logger.info("🛑 Завершение работы приложения")
+        if bot:
+            await bot.session.close()
 
 if __name__ == "__main__":
     asyncio.run(main()) 
