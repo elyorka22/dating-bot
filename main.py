@@ -371,32 +371,9 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         print(f"HTTP: {format % args}")
 
-# Функция запуска бота
-async def run_bot():
-    """Запуск бота"""
-    print("🤖 Запуск Telegram бота...")
-    
-    # Проверяем подключение к базе данных
-    if not check_database_connection():
-        print("❌ Не удалось подключиться к базе данных")
-        return
-    
-    # Создаем таблицы
-    create_tables()
-    print("✅ Таблицы созданы")
-    
-    # Регистрируем роутеры
-    dp.include_router(router)
-    
-    # Запускаем бота
-    try:
-        await dp.start_polling(bot)
-    except Exception as e:
-        print(f"❌ Ошибка запуска бота: {e}")
-
-# Функция запуска HTTP сервера
+# Функция запуска HTTP сервера в фоне
 def run_http_server():
-    """Запуск HTTP сервера"""
+    """Запуск HTTP сервера в фоновом потоке"""
     port = int(os.environ.get("PORT", 8000))
     print(f"🌐 Запуск HTTP сервера на порту {port}")
     
@@ -408,20 +385,33 @@ def run_http_server():
         print(f"❌ Ошибка запуска HTTP сервера: {e}")
 
 # Главная функция
-def main():
+async def main():
     print("=== ЗАПУСК СИСТЕМЫ ===")
     
     try:
-        # Запускаем бота в отдельном потоке
-        bot_thread = threading.Thread(target=lambda: asyncio.run(run_bot()), daemon=True)
-        bot_thread.start()
-        print("✅ Бот запущен в фоне")
+        # Проверяем подключение к базе данных
+        if not check_database_connection():
+            print("❌ Не удалось подключиться к базе данных")
+            return
+        
+        # Создаем таблицы
+        create_tables()
+        print("✅ Таблицы созданы")
+        
+        # Регистрируем роутеры
+        dp.include_router(router)
+        
+        # Запускаем HTTP сервер в фоновом потоке
+        http_thread = threading.Thread(target=run_http_server, daemon=True)
+        http_thread.start()
+        print("✅ HTTP сервер запущен в фоне")
         
         # Ждем немного
-        time.sleep(3)
+        await asyncio.sleep(3)
         
-        # Запускаем HTTP сервер в основном потоке
-        run_http_server()
+        # Запускаем бота в основном потоке
+        print("🤖 Запуск Telegram бота...")
+        await dp.start_polling(bot)
         
     except Exception as e:
         print(f"❌ Критическая ошибка: {e}")
@@ -430,4 +420,4 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main() 
+    asyncio.run(main()) 
