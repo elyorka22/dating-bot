@@ -1,94 +1,47 @@
-import asyncio
-import logging
+#!/usr/bin/env python3
+import os
 import sys
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
-from config import BOT_TOKEN
-from database.database import create_tables, check_database_connection
-from handlers.registration import router as registration_router
-from handlers.search import router as search_router
-from handlers.requests import router as requests_router
-from handlers.settings import router as settings_router
-from handlers.profile import router as profile_router
-from handlers.language import router as language_router
-from utils.logger import setup_logger, log_bot_event, log_error
+print("=== ЗАПУСК ПРОСТОГО СЕРВЕРА ===")
+print(f"Python: {sys.version}")
+print(f"Директория: {os.getcwd()}")
+print(f"Файлы: {os.listdir('.')}")
+print(f"PORT: {os.environ.get('PORT', 'НЕ УСТАНОВЛЕН')}")
 
-# Настройка логирования
-logger = setup_logger("dating_bot", "INFO")
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        print(f"Получен запрос: {self.path}")
+        
+        if self.path in ['/', '/health']:
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            response = "OK - Сервер работает!"
+            self.wfile.write(response.encode('utf-8'))
+            print("Отправлен ответ: 200 OK")
+        else:
+            self.send_response(404)
+            self.end_headers()
+            print("Отправлен ответ: 404")
 
-async def main():
-    """Главная функция запуска бота"""
-    log_bot_event(logger, "Bot startup", "Starting dating bot...")
-    
-    # Проверяем подключение к базе данных
-    if not check_database_connection():
-        log_error(logger, Exception("Database connection failed"), "Database initialization")
-        logger.error("Не удалось подключиться к базе данных. Проверьте настройки.")
-        return
-    
-    # Создаем таблицы в базе данных
+    def log_message(self, format, *args):
+        print(f"HTTP: {format % args}")
+
+def main():
     try:
-        create_tables()
-        log_bot_event(logger, "Database initialized", "Tables created successfully")
+        port = int(os.environ.get("PORT", 8000))
+        print(f"Запуск сервера на порту {port}")
+        
+        server = HTTPServer(('0.0.0.0', port), SimpleHandler)
+        print(f"Сервер запущен на 0.0.0.0:{port}")
+        
+        server.serve_forever()
     except Exception as e:
-        log_error(logger, e, "Table creation")
-        logger.error(f"Ошибка при создании таблиц: {e}")
-        return
-    
-    # Инициализируем бота
-    try:
-        bot = Bot(
-            token=BOT_TOKEN,
-            default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-        )
-        log_bot_event(logger, "Bot initialized", f"Token: {BOT_TOKEN[:10]}...")
-    except Exception as e:
-        log_error(logger, e, "Bot initialization")
-        logger.error(f"Ошибка при инициализации бота: {e}")
-        return
-    
-    # Создаем диспетчер
-    dp = Dispatcher()
-    
-    # Регистрируем роутеры
-    routers = [
-        registration_router,
-        search_router,
-        requests_router,
-        settings_router,
-        profile_router,
-        language_router
-    ]
-    
-    for router in routers:
-        dp.include_router(router)
-    
-    log_bot_event(logger, "Routers registered", f"Total routers: {len(routers)}")
-    logger.info("Бот запущен и готов к работе!")
-    
-    # Запускаем бота
-    try:
-        log_bot_event(logger, "Starting polling", "Bot is now polling for updates")
-        await dp.start_polling(bot)
-    except KeyboardInterrupt:
-        log_bot_event(logger, "Bot stopped", "User interrupted")
-        logger.info("Бот остановлен пользователем")
-    except Exception as e:
-        log_error(logger, e, "Bot polling")
-        logger.error(f"Ошибка при работе бота: {e}")
-    finally:
-        try:
-            await bot.session.close()
-            log_bot_event(logger, "Bot session closed", "Cleanup completed")
-        except Exception as e:
-            log_error(logger, e, "Session cleanup")
+        print(f"Ошибка: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        log_error(logger, e, "Main function")
-        logger.critical(f"Критическая ошибка при запуске бота: {e}")
-        sys.exit(1) 
+    main() 

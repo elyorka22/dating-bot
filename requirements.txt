@@ -1,1 +1,1 @@
-# No dependencies needed - using standard library only 
+# Нет зависимостей - используем только стандартные библиотеки Python 
